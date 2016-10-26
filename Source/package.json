@@ -1,0 +1,19 @@
+{
+  "name": "content_publisher_github_page",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "author": "Thomas Scheibitz - in2code GmbH",
+  "license": "ISC",
+  "devDependencies": {
+    "browser-sync": "^2.17.5",
+    "gulp": "^3.9.1",
+    "gulp-plumber": "^1.1.0",
+    "gulp-sass": "^2.3.2"
+  },
+  "scripts": {
+    "frontend": "./node_modules/.bin/gulp watch",
+    "sync": "npm run-script frontend & ./node_modules/.bin/browser-sync start --index='index.html' --server '../' --files='../' --no-ghost-mode",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}

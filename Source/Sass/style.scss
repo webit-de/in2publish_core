@@ -1,0 +1,107 @@
+@import "settings";
+
+body {
+  font-family: $base-font;
+  font-weight: $base-font-weight;
+  font-size: $base-font-size;
+  line-height: $base-font-lineheight;
+  background-color: $bluecharcoal;
+  -webkit-font-smoothing: antialiased;
+  -webkit-overflow-scrolling: touch;
+  margin: 0;
+  color: $white;
+  -webkit-text-size-adjust: 100%;
+  padding-bottom: 50px;
+}
+
+// set some elements responsive
+img, object, embed, video {
+  height: auto;
+  max-width: 100%;
+}
+
+// and the hack for IE8
+@media \0screen {
+  img, object, embed, video {
+    width: auto; /* for ie 8 */
+  }
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-weight: $base-font-weight;
+  line-height: 150%;
+}
+
+h1 {
+  font-size: 2em;
+}
+h2 {
+  font-size: 1.5em;
+}
+h3 {
+  font-size: 1.4em;
+}
+h4 {
+  font-size: 1.4em;
+  font-weight: $base-font-weight--bold;
+  margin-bottom: 15px;
+}
+
+h3,
+h4 {
+  line-height: 1.2em;
+}
+
+b, strong {
+  font-weight: $base-font-weight--bold;
+}
+
+a {
+  color: $white;
+  text-decoration: none;
+  word-wrap: break-word;
+
+  &hover,
+  &focus {
+    color: $white;
+    text-decoration: underline;
+    outline: 0;
+  }
+}
+
+.content {
+  padding: 15px;
+  text-align: center;
+}
+
+.headerline {
+  padding: 10px;
+  background-color: $gladegreen;
+  text-align: center;
+  color: $white;
+  font-size: 0.8em;
+
+  a:hover {
+    text-decoration: underline;
+  }
+}
+
+svg {
+  display: block;
+}
+
+
+.logo {
+  margin: 20px 0 0;
+
+  @media (min-width: 1000px) {
+    margin: 20px 0 40px;
+  }
+}
+
+@import "changelogbox";
+@import "button";
+@import "footer";

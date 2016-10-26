@@ -1,0 +1,33 @@
+.changelogbox {
+  background-color: $white;
+  color: $cardinggreen;
+  max-width: 800px;
+  padding: 15px;
+  margin: 30px auto;
+  text-align: left;
+
+  @media (min-width: 600px) {
+    padding: 50px;
+  }
+
+  > h1 {
+    @extend h2;
+    margin-top: 0;
+    text-align: center;
+  }
+
+  > p {
+    @extend h4;
+
+    &:last-child {
+      font-size: 1em;
+      font-weight: normal;
+    }
+  }
+
+  > ul {
+    li {
+      margin: 0 0 10px 0;
+    }
+  }
+}
