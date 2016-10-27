@@ -4,7 +4,7 @@ function markdownToContainer(data) {
 	$('#changelogbox').html(markdown);
 }
 
-$.get('https://raw.githubusercontent.com/in2code-de/in2publish_core/feature/ffs/CHANGELOG.md', function() {
+$.get('https://raw.githubusercontent.com/in2code-de/in2publish_core/master/CHANGELOG.md', function() {
 })
 .done(function(data) {
 	'use strict';
