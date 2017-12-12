@@ -65,6 +65,11 @@ abstract class BaseRepository
     protected $tcaService = null;
 
     /**
+     * @var array
+     */
+    protected $runtimeCache = [];
+
+    /**
      * Constructor
      */
     public function __construct()
@@ -87,6 +92,20 @@ abstract class BaseRepository
             '*',
             $this->tableName,
             $this->identifierFieldName . '="' . $this->quoteString($identifier) . '"'
+        );
+    }
+
+    /**
+     * @param DatabaseConnection $databaseConnection
+     * @param string $identifiers
+     * @return array
+     */
+    protected function getPropertiesForIdentifiers(DatabaseConnection $databaseConnection, $identifiers)
+    {
+        return (array)$databaseConnection->exec_SELECTgetRows(
+            '*',
+            $this->tableName,
+            $this->identifierFieldName . ' IN (' . $databaseConnection->cleanIntList($identifiers) . ')'
         );
     }
 

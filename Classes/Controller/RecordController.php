@@ -28,8 +28,10 @@ namespace In2code\In2publishCore\Controller;
  ***************************************************************/
 
 use In2code\In2publishCore\Domain\Factory\FakeRecordFactory;
+use In2code\In2publishCore\Domain\Model\RecordInterface;
 use In2code\In2publishCore\Domain\Service\TcaProcessingService;
 use In2code\In2publishCore\Utility\ConfigurationUtility;
+use TYPO3\CMS\Core\Cache\CacheManager;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Utility\LocalizationUtility;
 
@@ -44,9 +46,16 @@ class RecordController extends AbstractController
      * represents the instance root
      *
      * @return void
+     * @throws \TYPO3\CMS\Core\Cache\Exception\NoSuchCacheException
      */
     public function indexAction()
     {
+        $cache = GeneralUtility::makeInstance(CacheManager::class)->getCache('in2publish_core');
+        $entryIdentifier = md5('pages|' . $this->pid);
+        if ($cache->has($entryIdentifier)) {
+            $this->commonRepository->prefetchEntries($cache->get($entryIdentifier));
+        }
+
         $this->logger->debug('Called indexAction');
         TcaProcessingService::getInstance();
         if (!ConfigurationUtility::getConfiguration('factory.simpleOverviewAndAjax')) {
@@ -55,10 +64,34 @@ class RecordController extends AbstractController
             $record = GeneralUtility::makeInstance(FakeRecordFactory::class)->buildFromStartPage($this->pid);
         }
 
+        if (!$cache->has($entryIdentifier)) {
+            $structure = $this->buildStructure($record);
+            foreach ($structure as $table => $entries) {
+                $structure[$table] = implode(',', $entries);
+            }
+            $cache->set($entryIdentifier, $structure);
+        }
+
         $this->signalSlotDispatcher->dispatch(__CLASS__, 'beforeIndexViewRender', [$this, $record]);
 
         $this->view->assign('record', $record);
         $this->assignServerAndPublishingStatus();
+    }
+
+    /**
+     * @param RecordInterface $record
+     * @param array $structure
+     * @return array
+     */
+    protected function buildStructure(RecordInterface $record, array $structure = [])
+    {
+        $structure[$record->getTableName()][] = $record->getIdentifier();
+        foreach ($record->getRelatedRecords() as $relatedRecords) {
+            foreach ($relatedRecords as $relatedRecord) {
+                $structure = $this->buildStructure($relatedRecord, $structure);
+            }
+        }
+        return $structure;
     }
 
     /**

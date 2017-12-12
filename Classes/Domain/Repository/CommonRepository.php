@@ -159,10 +159,14 @@ class CommonRepository extends BaseRepository
         if ($this->shouldSkipFindByIdentifier($identifier)) {
             return GeneralUtility::makeInstance(NullRecord::class, $tableName);
         }
-        return $this->convertToRecord(
-            $this->getPropertiesForIdentifier($this->localDatabase, $identifier),
-            $this->getPropertiesForIdentifier($this->foreignDatabase, $identifier)
-        );
+        if (isset($this->runtimeCache[$this->tableName][$identifier])) {
+            $localProperties = $this->runtimeCache[$this->tableName][$identifier]['local'];
+            $foreignProperties = $this->runtimeCache[$this->tableName][$identifier]['foreign'];
+        } else {
+            $localProperties = $this->getPropertiesForIdentifier($this->localDatabase, $identifier);
+            $foreignProperties = $this->getPropertiesForIdentifier($this->foreignDatabase, $identifier);
+        }
+        return $this->convertToRecord($localProperties, $foreignProperties);
     }
 
     /**
@@ -178,8 +182,14 @@ class CommonRepository extends BaseRepository
         if ($this->shouldSkipFindByProperty($propertyName, $propertyValue)) {
             return [];
         }
-        if ($propertyName === 'uid' && $this->recordFactory->hasCachedRecord($this->tableName, $propertyValue)) {
-            return $this->recordFactory->getCachedRecord($this->tableName, $propertyValue);
+        if ($propertyName === 'uid') {
+            if ($this->recordFactory->hasCachedRecord($this->tableName, $propertyValue)) {
+                return $this->recordFactory->getCachedRecord($this->tableName, $propertyValue);
+            } elseif (isset($this->runtimeCache[$this->tableName][$propertyValue])) {
+                $localProperties = $this->runtimeCache[$this->tableName][$propertyValue]['local'];
+                $foreignProperties = $this->runtimeCache[$this->tableName][$propertyValue]['foreign'];
+                return $this->convertPropertyArraysToRecords([$localProperties], [$foreignProperties]);
+            }
         }
         $localProperties = $this->findPropertiesByProperty($this->localDatabase, $propertyName, $propertyValue);
         $foreignProperties = $this->findPropertiesByProperty($this->foreignDatabase, $propertyName, $propertyValue);
@@ -958,16 +968,16 @@ class CommonRepository extends BaseRepository
                         );
                     }
                     foreach ($identifiers as $identifier) {
+                        if (isset($this->runtimeCache[$this->tableName][$identifier]['local'])) {
+                            $localRows = [$this->runtimeCache[$this->tableName][$identifier]['local']];
+                            $foreignRows = [$this->runtimeCache[$this->tableName][$identifier]['foreign']];
+                        } else {
+                            $localRows = $this->findPropertiesByProperty($this->localDatabase, 'uid', $identifier);
+                            $foreignRows = $this->findPropertiesByProperty($this->foreignDatabase, 'uid', $identifier);
+                        }
                         $records = array_merge(
                             $records,
-                            $this->convertPropertyArraysToRecords(
-                                $this->findPropertiesByProperty(
-                                    $this->localDatabase,
-                                    'uid',
-                                    $identifier
-                                ),
-                                $this->findPropertiesByProperty($this->foreignDatabase, 'uid', $identifier)
-                            )
+                            $this->convertPropertyArraysToRecords($localRows, $foreignRows)
                         );
                     }
                     $this->tableName = $previousTableName;
@@ -1062,17 +1072,14 @@ class CommonRepository extends BaseRepository
                     );
                 }
                 foreach ($identifiers as $identifier) {
-                    $records = array_merge(
-                        $records,
-                        $this->convertPropertyArraysToRecords(
-                            $this->findPropertiesByProperty(
-                                $this->localDatabase,
-                                'uid',
-                                $identifier
-                            ),
-                            $this->findPropertiesByProperty($this->foreignDatabase, 'uid', $identifier)
-                        )
-                    );
+                    if (isset($this->runtimeCache[$this->tableName][$identifier]['local'])) {
+                        $localRows = [$this->runtimeCache[$this->tableName][$identifier]['local']];
+                        $foreignRows = [$this->runtimeCache[$this->tableName][$identifier]['foreign']];
+                    } else {
+                        $localRows = $this->findPropertiesByProperty($this->localDatabase, 'uid', $identifier);
+                        $foreignRows = $this->findPropertiesByProperty($this->foreignDatabase, 'uid', $identifier);
+                    }
+                    $records = array_merge($records, $this->convertPropertyArraysToRecords($localRows, $foreignRows));
                 }
                 $this->tableName = $previousTableName;
             }
@@ -1225,7 +1232,7 @@ class CommonRepository extends BaseRepository
             if (!empty($columnConfiguration['MM'])) {
                 $records = $this->fetchRelatedRecordsBySelectMm($columnConfiguration, $record, $excludedTableNames);
             } else {
-                $whereClause = '';
+                $clause = '';
                 if (!empty($columnConfiguration['foreign_table_where'])) {
                     /** @var ReplaceMarkersService $replaceMarkers */
                     $replaceMarkers = GeneralUtility::makeInstance(
@@ -1233,7 +1240,7 @@ class CommonRepository extends BaseRepository
                         $this->localDatabase,
                         $this->foreignDatabase
                     );
-                    $whereClause = $replaceMarkers->replaceMarkers(
+                    $clause = $replaceMarkers->replaceMarkers(
                         $record,
                         $columnConfiguration['foreign_table_where']
                     );
@@ -1249,17 +1256,17 @@ class CommonRepository extends BaseRepository
                     $uidArray = $recordIdentifier;
                 }
                 foreach ($uidArray as $uid) {
+                    if ((empty($clause) || strpos($clause, 'ORDER') === 0)
+                        && isset($this->runtimeCache[$this->tableName][$uid]['local'])) {
+                        $localRows = [$this->runtimeCache[$this->tableName][$uid]['local']];
+                        $foreignRows = [$this->runtimeCache[$this->tableName][$uid]['foreign']];
+                    } else {
+                        $localRows = $this->findPropertiesByProperty($this->localDatabase, 'uid', $uid, $clause);
+                        $foreignRows = $this->findPropertiesByProperty($this->foreignDatabase, 'uid', $uid, $clause);
+                    }
                     $records = array_merge(
                         $records,
-                        $this->convertPropertyArraysToRecords(
-                            $this->findPropertiesByProperty(
-                                $this->localDatabase,
-                                'uid',
-                                $uid,
-                                $whereClause
-                            ),
-                            $this->findPropertiesByProperty($this->foreignDatabase, 'uid', $uid, $whereClause)
-                        )
+                        $this->convertPropertyArraysToRecords($localRows, $foreignRows)
                     );
                 }
             }
@@ -1569,7 +1576,7 @@ class CommonRepository extends BaseRepository
     protected function isRemovedAndDeletedRecord(array $localProps, array $foreignProps)
     {
         return (empty($localProps) && isset($foreignProps['deleted']) && 1 === (int)$foreignProps['deleted'])
-            || (empty($foreignProps) && isset($localProps['deleted']) && 1 === (int)$localProps['deleted']);
+               || (empty($foreignProps) && isset($localProps['deleted']) && 1 === (int)$localProps['deleted']);
     }
 
     /**
@@ -1995,5 +2002,25 @@ class CommonRepository extends BaseRepository
             DatabaseUtility::buildForeignDatabaseConnection(),
             $tableName
         );
+    }
+
+    /**
+     * @param array $entries
+     */
+    public function prefetchEntries(array $entries)
+    {
+        foreach ($entries as $table => $identifiers) {
+            $localRows = $this->getPropertiesForIdentifiers($this->localDatabase, $identifiers);
+            $foreignRows = $this->getPropertiesForIdentifiers($this->foreignDatabase, $identifiers);
+            $localUids = array_column($localRows, 'uid');
+            $foreignUids = array_column($foreignRows, 'uid');
+            $localRows = array_combine($localUids, $localRows);
+            $foreignRows = array_combine($foreignUids, $foreignRows);
+            $uids = array_unique(array_merge($localUids, $foreignUids));
+            foreach ($uids as $uid) {
+                $this->runtimeCache[$table][$uid]['local'] = isset($localRows[$uid]) ? $localRows[$uid] : [];
+                $this->runtimeCache[$table][$uid]['foreign'] = isset($foreignRows[$uid]) ? $foreignRows[$uid] : [];
+            }
+        }
     }
 }
