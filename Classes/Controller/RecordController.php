@@ -51,7 +51,7 @@ class RecordController extends AbstractController
     public function indexAction()
     {
         $cache = GeneralUtility::makeInstance(CacheManager::class)->getCache('in2publish_core');
-        $entryIdentifier = md5('pages|' . $this->pid);
+        $entryIdentifier = 'pages_' . $this->pid;
         if ($cache->has($entryIdentifier)) {
             $this->commonRepository->prefetchEntries($cache->get($entryIdentifier));
         }
