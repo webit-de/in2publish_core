@@ -1262,11 +1262,7 @@ class CommonRepository extends BaseRepository
                 $whereClause = '';
                 if (!empty($columnConfiguration['foreign_table_where'])) {
                     /** @var ReplaceMarkersService $replaceMarkers */
-                    $replaceMarkers = GeneralUtility::makeInstance(
-                        ReplaceMarkersService::class,
-                        $this->localDatabase,
-                        $this->foreignDatabase
-                    );
+                    $replaceMarkers = GeneralUtility::makeInstance(ReplaceMarkersService::class);
                     $whereClause = $replaceMarkers->replaceMarkers(
                         $record,
                         $columnConfiguration['foreign_table_where']
