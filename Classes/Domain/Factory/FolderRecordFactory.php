@@ -90,7 +90,7 @@ class FolderRecordFactory
      *
      * @var int
      */
-    protected $threshold = 150;
+    protected $threshold = 250;
 
     /**
      * FolderRecordFactory constructor.
