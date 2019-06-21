@@ -1270,6 +1270,13 @@ class CommonRepository extends BaseRepository
         } else {
             $fileNames = GeneralUtility::trimExplode(',', $flexFormData, true);
         }
+
+        // Bugfix - Catch flexform error
+        // If somehow the flexform was not parsed, then catch this here and return
+        if(isset($fileNames[0]) && preg_match('/^<\?xml/', $fileNames[0])) {
+            $fileNames = [];
+        }
+
         foreach ($fileNames as $key => $filename) {
             // Force indexing of the record
             $fileNames[$key] = GeneralUtility::makeInstance(ResourceFactory::class)
